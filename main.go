@@ -28,7 +28,6 @@ const (
 	const socket = new WebSocket("ws://" + window.location.host + "/ws")
 	socket.addEventListener("message", (event) =>{
 		location.reload()
-		console.log(event.data)
 	})
 	socket.addEventListener("close", (event) =>{
 		console.log("Server closed socket")
@@ -43,8 +42,19 @@ func printError(msg string) {
 
 func main() {
 	args := os.Args
-	if len(args) != 3 {
-		printError("Error: Please enter args - FILE.html PORT\n")
+	if len(args) == 2 {
+		port = 8080
+	} else if len(args) == 3 {
+
+		if parse, err := strconv.Atoi(args[2]); err != nil {
+			fmt.Fprint(os.Stderr, "Error: Please enter integer as port for second argument\n")
+			return
+		} else {
+			port = parse
+		}
+
+	} else {
+		printError("Error: Please enter args - <file> <port - optional>\n")
 		return
 	}
 
@@ -54,13 +64,6 @@ func main() {
 	}
 	rootFile = args[1]
 	usedFiles[rootFile] = stats.ModTime()
-
-	if parse, err := strconv.Atoi(args[2]); err != nil {
-		fmt.Fprint(os.Stderr, "Error: Please enter integer as port for second argument\n")
-		return
-	} else {
-		port = parse
-	}
 
 	fmt.Printf("Listening on http://127.0.0.1:%v\n", port)
 
