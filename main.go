@@ -25,14 +25,19 @@ var (
 
 const (
 	script = `<script>
-	const socket = new WebSocket("ws://" + window.location.host + "/ws")
-	socket.addEventListener("message", (event) =>{
-		location.reload()
-	})
-	socket.addEventListener("close", (event) =>{
-		console.log("Server closed socket")
-	})
-	</script>
+		const socket = new WebSocket("ws://" + window.location.host + "/ws")
+		socket.addEventListener("message", (event) =>{
+			console.log(event.data)
+			if ( event.data == "reload" ) {
+				socket.close()
+				location.reload()
+			}
+		})
+
+		socket.addEventListener("close", (event) =>{
+			console.log("Server closed socket")
+		})
+		</script>
 	</body`
 )
 
@@ -68,18 +73,6 @@ func main() {
 	fmt.Printf("Listening on http://127.0.0.1:%v\n", port)
 
 	go updateLoop()
-
-	// Read request
-	// Parse request
-	// If tcp /:
-	//    Get pointed at file
-	//    Insert script to get web socket
-	//    respond
-	// If web socket:
-	//    accept
-	//    handle that stuff
-	// else:
-	//    otherwise, serve file
 
 	http.HandleFunc("/", handleHttp)
 	http.HandleFunc("/ws", handleNewSocket)
@@ -127,45 +120,6 @@ func fuckWithRoot() (string, error) {
 	body := strings.Join(splitRead, script)
 
 	return body, nil
-}
-
-func handleNewSocket(w http.ResponseWriter, r *http.Request) {
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		msg := fmt.Sprintf("Internal server error: %s", err)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
-	}
-
-	socketPool = append(socketPool, ws)
-}
-
-func updateLoop() {
-	defer func() {
-		for _, ws := range socketPool {
-			ws.Close()
-		}
-	}()
-
-	for {
-		for file, time := range usedFiles {
-			stat, err := os.Stat("./" + file)
-			if err != nil {
-				delete(usedFiles, file)
-			}
-
-			if newTime := stat.ModTime(); newTime != time {
-				for _, ws := range socketPool {
-					ws.WriteMessage(websocket.TextMessage, []byte("reload"))
-				}
-				usedFiles[file] = newTime
-			}
-
-		}
-
-		time.Sleep(1 * time.Second)
-	}
-
 }
 
 //
